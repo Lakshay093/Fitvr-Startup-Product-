@@ -19,7 +19,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <footer aria-label="Creator credit" className="border-t border-[#e2e5da] bg-[#f8f8f3] px-6 py-5 text-center text-xs text-[#69735e]">
+          Made by Lakshay Dhiman with pure heart <span role="img" aria-label="heart">&#10084;&#65039;</span>
+        </footer>
+      </body>
     </html>
   );
 }
