@@ -1,8 +1,22 @@
 import cors from "cors";
 import express from "express";
-import rateLimit from "express-rate-limit";
-import helmet from "helmet";
-import pinoHttp from "pino-http";
+import { rateLimit } from "express-rate-limit";
+import {
+  contentSecurityPolicy,
+  crossOriginOpenerPolicy,
+  crossOriginResourcePolicy,
+  originAgentCluster,
+  referrerPolicy,
+  strictTransportSecurity,
+  xContentTypeOptions,
+  xDnsPrefetchControl,
+  xDownloadOptions,
+  xFrameOptions,
+  xPermittedCrossDomainPolicies,
+  xPoweredBy,
+  xXssProtection
+} from "helmet";
+import { pinoHttp } from "pino-http";
 import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { fitSessionsRouter } from "./routes/fit-sessions.js";
@@ -15,10 +29,20 @@ import { logger } from "./lib/logger.js";
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 
-app.use(helmet());
+// Vercel terminates TLS and forwards the client IP through its proxy.
+if (process.env.VERCEL === "1") app.set("trust proxy", 1);
+
+// Named exports avoid default-import interop differences in the serverless compiler.
+// These are the same middleware enabled by Helmet's default configuration.
+app.use(
+  contentSecurityPolicy(), crossOriginOpenerPolicy(), crossOriginResourcePolicy(),
+  originAgentCluster(), referrerPolicy(), strictTransportSecurity(),
+  xContentTypeOptions(), xDnsPrefetchControl(), xDownloadOptions(),
+  xFrameOptions(), xPermittedCrossDomainPolicies(), xPoweredBy(), xXssProtection()
+);
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
+    origin: process.env.CORS_ORIGIN?.split(",").map(origin => origin.trim()).filter(Boolean) ?? ["http://localhost:3000"],
     credentials: true
   })
 );
@@ -34,8 +58,12 @@ app.use(
 app.use(pinoHttp({ logger }));
 app.use(requestTenant);
 
+app.get("/", (_request, response) => {
+  response.json({ service: "fitvr-api", mode: "demo", health: "/health", endpoints: ["/v1/products", "/v1/fit-sessions", "/v1/analytics"] });
+});
+
 app.get("/health", (_request, response) => {
-  response.json({ ok: true, service: "fitvr-api" });
+  response.json({ ok: true, service: "fitvr-api", mode: "demo", storage: "stateless" });
 });
 
 app.use("/v1/auth", authRouter);
@@ -45,6 +73,10 @@ app.use("/v1/analytics", analyticsRouter);
 app.use("/v1/webhooks", webhooksRouter);
 app.use(errorHandler);
 
-app.listen(port, () => {
-  logger.info({ port }, "Fit.VR API listening");
-});
+if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
+  app.listen(port, () => {
+    logger.info({ port }, "Fit.VR API listening");
+  });
+}
+
+export default app;

@@ -16,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Production key management is not configured in this demo." }, { status: 503 });
+  }
   const apiKey = createApiKey("live");
 
   return NextResponse.json(

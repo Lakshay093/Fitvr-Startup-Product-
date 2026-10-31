@@ -4,6 +4,10 @@ import { Router } from "express";
 export const authRouter = Router();
 
 authRouter.post("/brand-login", async (request, response) => {
+  if (process.env.NODE_ENV === "production") {
+    response.status(503).json({ error: "Demo login is disabled on the public deployment. Production authentication is not configured." });
+    return;
+  }
   const email = String(request.body.email ?? "founder@apex.test");
   const secret = new TextEncoder().encode(
     process.env.JWT_SECRET ?? "development-fitvr-secret-change-me"

@@ -1,5 +1,10 @@
 # FitVR
 
+Live frontend: https://fitvr-frontend.vercel.app
+
+Live demo API: https://fitvr-backend.vercel.app
+Deployment setup and limitations: [Deployment guide](docs/DEPLOYMENT.md).
+
 ## Redesigned fitting experience
 
 The customer UI now follows **body setup → profile review → wardrobe** with an ivory and sage visual system, responsive navigation, illustrated garment previews, and an interactive fitting room.
