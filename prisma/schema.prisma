@@ -1,0 +1,508 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SHOPPER
+  BRAND_MEMBER
+  BRAND_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum FitPreference {
+  SLIM
+  REGULAR
+  OVERSIZED
+  COMPRESSION
+  RELAXED
+}
+
+enum AssetStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum PrivacyMode {
+  TEMPORARY
+  SAVED_PROFILE
+}
+
+enum ConsentPurpose {
+  CAMERA_ACCESS
+  MEASUREMENT_PROCESSING
+  SAVED_BODY_PROFILE
+  ANALYTICS
+  MARKETING
+}
+
+enum RequestStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CANCELED
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  role           UserRole      @default(SHOPPER)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  brandAdmins    BrandAdmin[]
+  bodyProfiles   BodyProfile[]
+  consentRecords ConsentRecord[]
+  dataExports    DataExportRequest[]
+  deletionRequests DataDeletionRequest[]
+  auditLogs      AuditLog[]
+}
+
+model Brand {
+  id             String             @id @default(cuid())
+  name           String
+  slug           String             @unique
+  status         String             @default("active")
+  websiteUrl     String?
+  billingEmail   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  admins         BrandAdmin[]
+  products       Product[]
+  sizeCharts     SizeChart[]
+  fitSessions    FitSession[]
+  analytics      TryOnAnalytics[]
+  apiKeys        ApiKey[]
+  sdkUsageLogs   SdkUsageLog[]
+  subscription   Subscription?
+  billingPlans   BillingPlan[]
+  webhookEvents  WebhookEvent[]
+  webhookTargets WebhookEndpoint[]
+  consentRecords ConsentRecord[]
+  deletionRequests DataDeletionRequest[]
+  auditLogs      AuditLog[]
+}
+
+model BrandAdmin {
+  id        String   @id @default(cuid())
+  brandId   String
+  userId    String
+  role      UserRole @default(BRAND_ADMIN)
+  createdAt DateTime @default(now())
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, userId])
+  @@index([userId])
+}
+
+model Product {
+  id             String             @id @default(cuid())
+  brandId        String
+  sku            String
+  name           String
+  description    String?
+  category       String
+  intendedFit    FitPreference      @default(REGULAR)
+  fabricType     String?
+  stretchPercent Float              @default(0)
+  compressionLevel Int              @default(0)
+  productLengthCm Float?
+  sleeveLengthCm  Float?
+  waistFit       FitPreference?
+  thighFit       FitPreference?
+  modelReferenceSize String?
+  modelReferenceHeightCm Float?
+  modelReferenceWeightKg Float?
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  brand          Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  images         ProductImage[]
+  models         ProductModel3D[]
+  fitRules       ProductFitRule[]
+  sizeCharts     SizeChart[]
+  fitSessions    FitSession[]
+  analytics      TryOnAnalytics[]
+
+  @@unique([brandId, sku])
+  @@index([brandId, category])
+}
+
+model ProductImage {
+  id          String      @id @default(cuid())
+  productId   String
+  url         String
+  alt         String?
+  layerType   String      @default("product")
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductModel3D {
+  id          String      @id @default(cuid())
+  productId   String
+  url         String
+  format      String      @default("glb")
+  status      AssetStatus @default(PENDING)
+  version     Int         @default(1)
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductFitRule {
+  id                   String        @id @default(cuid())
+  productId             String
+  priorityZones         String[]
+  muscleFitEnabled      Boolean       @default(true)
+  squatComfortEnabled   Boolean       @default(false)
+  athleticAdjustmentCm  Float         @default(0)
+  compressionAllowance  Float         @default(0)
+  metadata              Json?
+  product               Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model SizeChart {
+  id              String          @id @default(cuid())
+  brandId         String
+  productId       String?
+  name            String
+  sizingStandard  String          @default("brand-custom")
+  genderPreference String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product         Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  rows            SizeChartRow[]
+
+  @@index([brandId])
+  @@index([productId])
+}
+
+model SizeChartRow {
+  id              String    @id @default(cuid())
+  sizeChartId      String
+  label           String
+  shoulderMinCm   Float?
+  shoulderMaxCm   Float?
+  chestMinCm      Float?
+  chestMaxCm      Float?
+  waistMinCm      Float?
+  waistMaxCm      Float?
+  hipMinCm        Float?
+  hipMaxCm        Float?
+  bicepMaxCm      Float?
+  thighMaxCm      Float?
+  calfMaxCm       Float?
+  inseamMinCm     Float?
+  inseamMaxCm     Float?
+  sortOrder       Int       @default(0)
+  chart           SizeChart @relation(fields: [sizeChartId], references: [id], onDelete: Cascade)
+
+  @@index([sizeChartId])
+}
+
+model BodyProfile {
+  id                    String            @id @default(cuid())
+  userId                String?
+  ownerLabel            String?
+  temporary             Boolean           @default(true)
+  encryptedMeasurements Json?
+  bodyType              String?
+  genderPreference      String?
+  preferredFit          FitPreference      @default(REGULAR)
+  deletedAt             DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  user                  User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  measurements          BodyMeasurement?
+  fitSessions           FitSession[]
+  consentRecords        ConsentRecord[]
+  dataExports           DataExportRequest[]
+  deletionRequests      DataDeletionRequest[]
+
+  @@index([userId])
+}
+
+model BodyMeasurement {
+  id              String      @id @default(cuid())
+  profileId       String      @unique
+  heightCm        Float
+  weightKg        Float
+  shoulderWidthCm Float?
+  chestCm         Float?
+  waistCm         Float?
+  hipCm           Float?
+  armLengthCm     Float?
+  bicepCm         Float?
+  neckCm          Float?
+  thighCm         Float?
+  calfCm          Float?
+  inseamCm        Float?
+  source          String      @default("manual")
+  confidence      Float?
+  createdAt       DateTime    @default(now())
+  profile         BodyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model FitSession {
+  id               String           @id @default(cuid())
+  brandId          String
+  productId        String
+  bodyProfileId    String?
+  privacyMode      PrivacyMode       @default(TEMPORARY)
+  recommendedSize  String?
+  alternativeSize  String?
+  confidence       Float?
+  overallFitScore  Float?
+  fitStatus        String?
+  returnRiskScore  Float?
+  returnRiskLevel  String?
+  recommendationReason String?
+  expectedFit      String?
+  warnings         Json?
+  cameraEnabled    Boolean           @default(false)
+  poseEngine       String?
+  deviceType       String?
+  region           String?
+  converted        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  brand            Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bodyProfile      BodyProfile?      @relation(fields: [bodyProfileId], references: [id], onDelete: SetNull)
+  analytics        TryOnAnalytics[]
+  areaResults      FitAreaResult[]
+  movementResults  MovementTestResult[]
+
+  @@index([brandId, createdAt])
+  @@index([productId])
+}
+
+model FitAreaResult {
+  id              String      @id @default(cuid())
+  sessionId       String
+  area            String
+  measurementKey  String
+  score           Float
+  status          String
+  severity        String
+  measuredCm      Float?
+  targetRange     String?
+  message         String?
+  createdAt       DateTime    @default(now())
+  session         FitSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([area, status])
+}
+
+model MovementTestResult {
+  id          String      @id @default(cuid())
+  sessionId   String
+  testKey     String
+  label       String
+  score       Float
+  status      String
+  message     String?
+  createdAt   DateTime    @default(now())
+  session     FitSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([testKey, status])
+}
+
+model TryOnAnalytics {
+  id          String      @id @default(cuid())
+  brandId     String
+  productId   String?
+  sessionId   String?
+  eventName   String
+  eventData   Json?
+  deviceType  String?
+  region      String?
+  createdAt   DateTime    @default(now())
+  brand       Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  session     FitSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([brandId, eventName, createdAt])
+  @@index([productId])
+}
+
+model ConsentRecord {
+  id            String          @id @default(cuid())
+  userId        String?
+  brandId       String?
+  bodyProfileId String?
+  purpose       ConsentPurpose
+  accepted      Boolean         @default(false)
+  source        String          @default("widget")
+  policyVersion String?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  user          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brand         Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  bodyProfile   BodyProfile?    @relation(fields: [bodyProfileId], references: [id], onDelete: SetNull)
+
+  @@index([userId, purpose])
+  @@index([brandId, purpose])
+  @@index([bodyProfileId])
+}
+
+model DataExportRequest {
+  id            String        @id @default(cuid())
+  userId        String?
+  bodyProfileId String?
+  status        RequestStatus @default(REQUESTED)
+  format        String        @default("json")
+  downloadUrl   String?
+  expiresAt     DateTime?
+  createdAt     DateTime      @default(now())
+  completedAt   DateTime?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  bodyProfile   BodyProfile?  @relation(fields: [bodyProfileId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([bodyProfileId])
+}
+
+model DataDeletionRequest {
+  id            String        @id @default(cuid())
+  userId        String?
+  brandId       String?
+  bodyProfileId String?
+  status        RequestStatus @default(REQUESTED)
+  reason        String?
+  requestedAt   DateTime      @default(now())
+  completedAt   DateTime?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brand         Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  bodyProfile   BodyProfile?  @relation(fields: [bodyProfileId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([brandId, status])
+  @@index([bodyProfileId])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  brandId     String
+  name        String
+  prefix      String
+  keyHash     String    @unique
+  lastFour    String
+  scopes      String[]
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+}
+
+model SdkUsageLog {
+  id          String   @id @default(cuid())
+  brandId     String
+  apiKeyId    String?
+  productId   String?
+  origin      String?
+  userAgent   String?
+  action      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
+}
+
+model BillingPlan {
+  id             String         @id @default(cuid())
+  name           String         @unique
+  monthlyPrice   Int?
+  tryOnLimit      Int?
+  features       String[]
+  createdAt      DateTime       @default(now())
+  brands         Brand[]
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  brandId             String             @unique
+  billingPlanId       String
+  status              SubscriptionStatus @default(TRIALING)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  brand               Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  plan                BillingPlan        @relation(fields: [billingPlanId], references: [id])
+}
+
+model WebhookEndpoint {
+  id          String    @id @default(cuid())
+  brandId     String
+  url         String
+  events      String[]
+  secretHash  String
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  brandId     String
+  eventType   String
+  payload     Json
+  deliveredAt DateTime?
+  failedAt    DateTime?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, eventType, createdAt])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  brandId     String?
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  brand       Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  actor       User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([brandId, createdAt])
+  @@index([actorUserId])
+}

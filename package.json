@@ -1,0 +1,34 @@
+{
+  "name": "fitvr-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fit.VR B2B virtual fitting SaaS for gym apparel, athleisure, and performance wear brands.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm --workspace @fitvr/web run dev",
+    "dev:api": "npm --workspace @fitvr/api run dev",
+    "build": "npm --workspace @fitvr/shared run build && npm --workspace @fitvr/sdk run build && npm --workspace @fitvr/api run build && npm --workspace @fitvr/web run build",
+    "test": "npm --workspace @fitvr/web run test && npm --workspace @fitvr/api run test",
+    "test:e2e": "playwright test",
+    "smoke:browser": "node scripts/smoke-playwright.cjs",
+    "serve:web:prod": "node scripts/serve-web-prod.cjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "lint": "npm --workspace @fitvr/shared run build && npm --workspace @fitvr/web run lint && npm --workspace @fitvr/api run lint",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2",
+    "prisma": "^6.18.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

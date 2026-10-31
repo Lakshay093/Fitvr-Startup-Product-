@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fit.VR Product Page Example</title>
+    <script src="http://localhost:3000/sdk.js"></script>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #050606;
+        color: white;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: #b7ff3c;
+        color: black;
+        padding: 14px 18px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Apex Compression Tee</h1>
+      <p>Gym-ready compression fit with stretch-mapped seams.</p>
+      <button data-fitvr-product-id="prod_apex_compression">Try with Fit.VR</button>
+    </main>
+    <script>
+      window.FitVR.init({
+        brandId: "apex-athletics",
+        apiKey: "fitvr_test_demo",
+        appUrl: "http://localhost:3000",
+        onRecommendation: function (result) {
+          console.log("Fit.VR recommendation", result.recommendedSize, result.overallFitScore);
+        }
+      });
+    </script>
+  </body>
+</html>
